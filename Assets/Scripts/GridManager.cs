@@ -22,6 +22,8 @@ public class GridManager : MonoBehaviour
     public Tilemap roadMap2;
     public Tilemap roadMap3;
 
+    public Tilemap pointMap;
+
     public TileBase roadTile;
 
     public SpriteRenderer floor0;
@@ -192,6 +194,10 @@ public class GridManager : MonoBehaviour
             Debug.Log(pos);
 
         }
+        if (Input.GetKeyDown("w"))
+        {
+            ShowPoints(coordinates.RoomCoord2, pointMap);
+        }
 
     }
 
@@ -331,5 +337,13 @@ public class GridManager : MonoBehaviour
         floorBtn3.GetComponent<Image>().color = btnColorActive;
         roadMap3.GetComponent<TilemapRenderer>().enabled = true;
         floor3.enabled = true;
+    }
+
+    private void ShowPoints(Dictionary<string,Vector2Int> roomCoords, Tilemap entryPoints)
+    {
+        foreach(KeyValuePair<string,Vector2Int> keyValuePair in roomCoords) 
+        {
+            entryPoints.SetTile(new Vector3Int(keyValuePair.Value.x, keyValuePair.Value.y, 0), roadTile);
+        }
     }
 }
