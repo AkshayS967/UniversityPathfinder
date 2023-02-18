@@ -197,6 +197,7 @@ public class GridManager : MonoBehaviour
         if (Input.GetKeyDown("w"))
         {
             ShowPoints(coordinates.RoomCoord2, pointMap);
+            Debug.Log(Physics2D.simulationMode);
         }
 
     }
