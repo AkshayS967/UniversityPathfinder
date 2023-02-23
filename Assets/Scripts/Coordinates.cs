@@ -24,7 +24,7 @@ public class Coordinates : MonoBehaviour
         {"A-204", new Vector2Int(125,-215)},
         {"A-205", new Vector2Int(116,-215)},
         {"A-206", new Vector2Int(107,-215)},
-        {"A-207", new Vector2Int(96,-215)},
+        {"A-207", new Vector2Int(87,-215)},
         {"A-208", new Vector2Int(87,-215)},
         {"A-209", new Vector2Int(78,-215)},
         {"A-210", new Vector2Int(68,-213)},
@@ -62,6 +62,7 @@ public class Coordinates : MonoBehaviour
         {"S-210", new Vector2Int(113,-135)},
         {"S-211", new Vector2Int(113,-131)},
         {"S-212", new Vector2Int(113,-120)},
+        {"S-219", new Vector2Int(113,-62)}
     };
     public Dictionary<string, Vector2Int> RoomCoord3 = new Dictionary<string, Vector2Int>
     {

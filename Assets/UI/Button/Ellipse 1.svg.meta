@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: c17f075cd365bd648b907b9e1242c39f
+guid: 9fc3c5085915572408f6cabbf6062834
 ScriptedImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -39,16 +39,16 @@ ScriptedImporter:
   spriteData:
     TessellationDetail: 0
     SpriteRect:
-      name: 
+      name: Ellipse 1Sprite
       originalName: 
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       alignment: 0
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 50, y: 50, z: 50, w: 50}
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 0
-        height: 0
-      spriteID: 170b28c854627f041bf861f5d1088612
+        width: 100
+        height: 100
+      spriteID: f27f2be452d22f340b3922686eb69ed6
     PhysicsOutlines: []
