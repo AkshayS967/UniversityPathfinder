@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml;
 using Unity.Mathematics;
 using Unity.VectorGraphics;
-using Unity.VisualScripting;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
@@ -13,6 +13,7 @@ public class GridManager : MonoBehaviour
 {
     private string destination="";
     private string currLocation="";
+    private int dest = 0, currLoc = 0;
 
     public Tilemap[] tilemaps;
 
@@ -24,20 +25,12 @@ public class GridManager : MonoBehaviour
 
     public SpriteRenderer[] floors;
 
-    public Vector3Int[,] spots0;
-    public Vector3Int[,] spots1;
-    public Vector3Int[,] spots2;
-    public Vector3Int[,] spots3;
+    public Vector3Int[][,] spots = new Vector3Int[4][,];
 
-    Astar astar0;
-    Astar astar1;
-    Astar astar2;
-    Astar astar3;
+    Astar[] astar = new Astar[4];
 
-    List<Spot> roadPath0 = new List<Spot>();
-    List<Spot> roadPath1 = new List<Spot>();
-    List<Spot> roadPath2 = new List<Spot>();
-    List<Spot> roadPath3 = new List<Spot>();
+    List<Spot>[] roadPath = new List<Spot>[4];
+
     new Camera camera;
 
     BoundsInt bounds0;
@@ -68,18 +61,20 @@ public class GridManager : MonoBehaviour
         bounds3 = tilemaps[3].cellBounds;
         camera = Camera.main;
 
-        spots0 = new Vector3Int[bounds0.size.x, bounds0.size.y];
-        spots1 = new Vector3Int[bounds1.size.x, bounds1.size.y];
-        spots2 = new Vector3Int[bounds2.size.x, bounds2.size.y];
-        spots3 = new Vector3Int[bounds3.size.x, bounds3.size.y];
-        CreateGrid(bounds0, tilemaps[0], spots0);
-        CreateGrid(bounds1, tilemaps[1], spots1);
-        CreateGrid(bounds2, tilemaps[2], spots2);
-        CreateGrid(bounds3, tilemaps[3], spots3);
-        astar0 = new Astar(spots0, bounds0.size.x, bounds0.size.y);
-        astar1 = new Astar(spots1, bounds1.size.x, bounds1.size.y);
-        astar2 = new Astar(spots2, bounds2.size.x, bounds2.size.y);
-        astar3 = new Astar(spots3, bounds3.size.x, bounds3.size.y);
+        spots[0] = new Vector3Int[bounds0.size.x, bounds0.size.y];
+        spots[1] = new Vector3Int[bounds1.size.x, bounds1.size.y];
+        spots[2] = new Vector3Int[bounds2.size.x, bounds2.size.y];
+        spots[3] = new Vector3Int[bounds3.size.x, bounds3.size.y];
+        CreateGrid(bounds0, tilemaps[0], spots[0]);
+        CreateGrid(bounds1, tilemaps[1], spots[1]);
+        CreateGrid(bounds2, tilemaps[2], spots[2]);
+        CreateGrid(bounds3, tilemaps[3], spots[3]);
+        astar[0] = new Astar(spots[0], bounds0.size.x, bounds0.size.y);
+        astar[1] = new Astar(spots[1], bounds1.size.x, bounds1.size.y);
+        astar[2] = new Astar(spots[2], bounds2.size.x, bounds2.size.y);
+        astar[3] = new Astar(spots[3], bounds3.size.x, bounds3.size.y);
+
+        ShowFloor();
     }
     public void CreateGrid(BoundsInt bounds, Tilemap tilemap, Vector3Int[,] spots)
     {
@@ -135,7 +130,7 @@ public class GridManager : MonoBehaviour
         }
         if (Input.GetKeyDown("w"))
         {
-            ShowPoints(coordinates.RoomCoord2, pointMap);
+            ShowPoints(coordinates.RoomCoord[2], pointMap);
             Debug.Log(Physics2D.simulationMode);
         }
 
@@ -173,9 +168,10 @@ public class GridManager : MonoBehaviour
 
     public Button[] floorBtns;
     public SVGImage indicator;
+    public Button goUpBtn, goDownBtn;
 
     private readonly float[] indicatorPos = { -200, -34, 134, 300 };
-    private float indicatorCurrPos = 300;
+    private int indicatorCurrPos = -200;
 
     private bool searched = false;
     private bool onSameFloor = true;
@@ -186,64 +182,43 @@ public class GridManager : MonoBehaviour
         roadMaps[1].ClearAllTiles();
         roadMaps[2].ClearAllTiles();
         roadMaps[3].ClearAllTiles();
+        dest = destination[2] - '0';
+        currLoc = currLocation[2]-'0';
         try 
         {
-            if (destination[2] == currLocation[2])
+            if (dest == currLoc)
             {
                 onSameFloor = true;
-                if (destination[2] == '0')
-                {
-                    findPath(roadPath0, roadMaps[0], astar0, coordinates.RoomCoord0[currLocation], coordinates.RoomCoord0[destination], spots0);
-                    MoveIndicator(0);
-                }
-                else if (destination[2] == '1')
-                {
-                    findPath(roadPath1, roadMaps[1], astar1, coordinates.RoomCoord1[currLocation], coordinates.RoomCoord1[destination], spots1);
-                    MoveIndicator(1);
-                }
-                else if (destination[2] == '2')
-                {
-                    findPath(roadPath2, roadMaps[2], astar2, coordinates.RoomCoord2[currLocation], coordinates.RoomCoord2[destination], spots2);
-                    MoveIndicator(2);
-                }
-                else if (destination[2] == '3')
-                {
-                    findPath(roadPath3, roadMaps[3], astar3, coordinates.RoomCoord3[currLocation], coordinates.RoomCoord3[destination], spots3);
-                    MoveIndicator(3);
-                }
-                else
-                {
-                    throw new Exception("Invalid Input");
-                }
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], coordinates.RoomCoord[dest][currLocation], coordinates.RoomCoord[dest][destination], spots[dest]);
+                MoveIndicator(dest);
             }
             else
             {
                 Debug.Log("Diff floor");
                 onSameFloor = false;
-                MoveIndicator(currLocation[2] - '0');
-                Debug.Log(currLocation[2] - '0'+"yea");
-                // first stairs
-                if (currLocation[2] == '1')
+                MoveIndicator(currLoc);
+
+                Vector2Int currLocV = coordinates.RoomCoord[currLoc][currLocation];
+                Vector2Int destV = coordinates.RoomCoord[dest][destination];
+                Vector2Int stairLocV = new Vector2Int();
+                Vector2Int stairIconLocV = new Vector2Int();
+                float minDist = 1000, currDist;
+
+                foreach(Coordinates.stairsLocation stairs in coordinates.stairsLocations)
                 {
-                    Vector2Int currLocV = coordinates.RoomCoord1[currLocation];
-                    Vector2Int destLocV = coordinates.RoomCoord2[destination];
-                    Vector2Int stairLocV = new Vector2Int();
-                    float minDist = 1000, currDist;
-                    for (int i = 0; i < coordinates.stairs1.Count; i++)
+                    currDist = Vector2.Distance(currLocV, stairs.LocV) + Vector2.Distance(stairs.LocV, destV);
+                    if (currDist < minDist)
                     {
-                        currDist = Vector2.Distance(currLocV, coordinates.stairs1[i]) + Vector2.Distance(coordinates.stairs1[i], destLocV);
-                        if (currDist < minDist)
-                        {
-                            minDist = currDist;
-                            stairLocV = coordinates.stairs1[i];
-                        }
+                        minDist = currDist;
+                        stairLocV = stairs.LocV;
+                        stairIconLocV = stairs.IconLocV;
                     }
-                    Debug.Log(stairLocV + "stairs");
-
-                    findPath(roadPath1, roadMaps[1], astar1, currLocV, stairLocV, spots1);
-                    findPath(roadPath2, roadMaps[2], astar2, stairLocV, destLocV, spots2);
-
                 }
+                Debug.Log(stairLocV + "stairs");
+
+                findPath(roadPath[currLoc], roadMaps[currLoc], astar[currLoc], currLocV, stairLocV, spots[currLoc]);
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], stairLocV, destV, spots[dest]);
+                MoveStairsBtn(stairIconLocV);
             }
         }
         catch (Exception e)
@@ -251,28 +226,84 @@ public class GridManager : MonoBehaviour
             Debug.LogException(e);
             searched = false;
             HideIndicator();
+            HideGoUpBtn();
+            HideGoDownBtn();
             return;
         }
         searched = true;
-        if (indicatorCurrPos != currFloor) ShowIndicator();
+        UpdateIndicator();
+        UpdateStairsBtn();
     }
 
-    private void ShowIndicator()
+    private void ShowGoUpBtn() 
+    { 
+        goUpBtn.enabled = true;
+        goUpBtn.GetComponent<SVGImage>().enabled = true;
+    }
+    private void ShowGoDownBtn() 
+    { 
+        goDownBtn.enabled = true; 
+        goDownBtn.GetComponent <SVGImage>().enabled = true;
+    }
+    private void HideGoUpBtn() 
     {
-        indicator.enabled = true;
+        goUpBtn.enabled = false;
+        goUpBtn.GetComponent<SVGImage>().enabled = false;
+    }
+    private void HideGoDownBtn() 
+    { 
+        goDownBtn.enabled = false;
+        goDownBtn.GetComponent<SVGImage>().enabled = false;
     }
 
-    private void HideIndicator()
+    private void MoveStairsBtn(Vector2 stairsIconLocV)
     {
-        indicator.enabled = false;
+        goUpBtn.GetComponent<RectTransform>().anchoredPosition = stairsIconLocV;
+        goDownBtn.GetComponent<RectTransform>().anchoredPosition = stairsIconLocV;
     }
 
-    private void MoveIndicator(int Floor)
+    private void UpdateStairsBtn()
+    {
+        if (searched)
+        {
+            HideGoUpBtn();
+            HideGoDownBtn();
+            if (!onSameFloor)
+            {
+                if (currFloor == currLoc)
+                {
+                    if (currLoc > dest) ShowGoDownBtn();
+                    else ShowGoUpBtn();
+                }
+                else if (currFloor == dest)
+                {
+                    if (currLoc > dest) ShowGoUpBtn();
+                    else ShowGoDownBtn();
+                }
+            }
+        }
+    }
+    public void goUp()
+    {
+        ChangeFloor(Math.Max(currLoc, dest));
+        Debug.Log("going up");
+    }
+    public void goDown()
+    {
+        ChangeFloor(Math.Min(currLoc, dest));
+        Debug.Log("going down");
+    }
+
+    private void ShowIndicator() { indicator.enabled = true; }
+
+    private void HideIndicator() { indicator.enabled = false; }
+
+    private void MoveIndicator(int floor)
     {
         Vector2 tempPos = indicator.GetComponent<RectTransform>().anchoredPosition;
-        tempPos.y = indicatorPos[Floor];
+        tempPos.y = indicatorPos[floor];
         indicator.GetComponent<RectTransform>().anchoredPosition = tempPos;
-        indicatorCurrPos = Floor;
+        indicatorCurrPos = floor;
     }
 
     public void UpdateIndicator()
@@ -286,49 +317,33 @@ public class GridManager : MonoBehaviour
             }
             else
             {
-                if (currFloor == currLocation[2] - '0')
+                if (currFloor == currLoc)
                 {
-                    MoveIndicator(destination[2] - '0');
+                    MoveIndicator(dest);
                 }
                 else
                 {
-                    MoveIndicator(currLocation[2] - '0');
+                    MoveIndicator(currLoc);
                 }
+                ShowIndicator();
             }
         }
     }
-    public void ShowFloor0()
+
+    public void ChangeFloorX(Button btn)
     {
-        if (currFloor == 0) return;
-        HideFloor();
-        currFloor = 0;
-        ShowFloor();
-        UpdateIndicator();
-        
+        int buttonClicked = btn.name[5] - '0';
+        ChangeFloor(buttonClicked);
     }
-    public void ShowFloor1()
+
+    private void ChangeFloor(int toFloor)
     {
-        if (currFloor == 1) return;
+        if (currFloor == toFloor) return;
         HideFloor();
-        currFloor = 1;
+        currFloor = toFloor;
         ShowFloor();
         UpdateIndicator();
-    }
-    public void ShowFloor2()
-    {
-        if (currFloor == 2) return;
-        HideFloor();
-        currFloor = 2;
-        ShowFloor();
-        UpdateIndicator();
-    }
-    public void ShowFloor3()
-    {
-        if (currFloor == 3) return;
-        HideFloor();
-        currFloor = 3;
-        ShowFloor();
-        UpdateIndicator();
+        UpdateStairsBtn();
     }
     private void HideFloor()
     {
