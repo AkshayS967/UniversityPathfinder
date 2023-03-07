@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Xml;
 using Unity.Mathematics;
 using Unity.VectorGraphics;
@@ -21,7 +22,7 @@ public class GridManager : MonoBehaviour
 
     public Tilemap pointMap;
 
-    public TileBase roadTile;
+    public TileBase[] roadTile;
 
     public SpriteRenderer[] floors;
 
@@ -96,9 +97,12 @@ public class GridManager : MonoBehaviour
     }
     private void DrawRoad(List<Spot> roadPath, Tilemap roadMap)
     {
-        for (int i = 0; i < roadPath.Count; i++)
+        for (int i = 0; i < roadPath.Count-1; i++)
         {
-            roadMap.SetTile(new Vector3Int(roadPath[i].X, roadPath[i].Y, 0), roadTile);
+            if (roadPath[i + 1].Y == roadPath[i].Y + 1) { roadMap.SetTile(new Vector3Int(roadPath[i].X, roadPath[i].Y, 0), roadTile[0]); }
+            else if (roadPath[i + 1].Y == roadPath[i].Y - 1) { roadMap.SetTile(new Vector3Int(roadPath[i].X, roadPath[i].Y, 0), roadTile[1]); }
+            else if (roadPath[i + 1].X == roadPath[i].X + 1) { roadMap.SetTile(new Vector3Int(roadPath[i].X, roadPath[i].Y, 0), roadTile[2]); }
+            else if (roadPath[i + 1].X == roadPath[i].X - 1) { roadMap.SetTile(new Vector3Int(roadPath[i].X, roadPath[i].Y, 0), roadTile[3]); }
         }
     }
     // Update is called once per frame
@@ -148,22 +152,14 @@ public class GridManager : MonoBehaviour
         DrawRoad(roadPath, roadMap);
     }
 
-    public void GetDestination(string s)
-    {
-        destination = s;
-        Debug.Log(destination);
-    }
+    public void GetDestination(string s){ destination = s; }
 
-    public void GetCurrLocation(string s)
-    {
-        currLocation = s;
-        Debug.Log(currLocation);
-    }
+    public void GetCurrLocation(string s){ currLocation = s; }
 
 
     // Button Code
     private Color btnColor = Color.white;
-    private Color btnColorActive = Color.grey;
+    private Color btnColorActive = new Color(0.8f,0.8f,0.8f,1);
     private int currFloor = 0;
 
     public Button[] floorBtns;
@@ -189,7 +185,7 @@ public class GridManager : MonoBehaviour
             if (dest == currLoc)
             {
                 onSameFloor = true;
-                findPath(roadPath[dest], roadMaps[dest], astar[dest], coordinates.RoomCoord[dest][currLocation], coordinates.RoomCoord[dest][destination], spots[dest]);
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], coordinates.RoomCoord[dest][destination], coordinates.RoomCoord[dest][currLocation], spots[dest]);
                 MoveIndicator(dest);
             }
             else
@@ -216,8 +212,8 @@ public class GridManager : MonoBehaviour
                 }
                 Debug.Log(stairLocV + "stairs");
 
-                findPath(roadPath[currLoc], roadMaps[currLoc], astar[currLoc], currLocV, stairLocV, spots[currLoc]);
-                findPath(roadPath[dest], roadMaps[dest], astar[dest], stairLocV, destV, spots[dest]);
+                findPath(roadPath[currLoc], roadMaps[currLoc], astar[currLoc], stairLocV, currLocV, spots[currLoc]);
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], destV, stairLocV, spots[dest]);
                 MoveStairsBtn(stairIconLocV);
             }
         }
@@ -283,16 +279,8 @@ public class GridManager : MonoBehaviour
             }
         }
     }
-    public void goUp()
-    {
-        ChangeFloor(Math.Max(currLoc, dest));
-        Debug.Log("going up");
-    }
-    public void goDown()
-    {
-        ChangeFloor(Math.Min(currLoc, dest));
-        Debug.Log("going down");
-    }
+    public void goUp() { ChangeFloor(Math.Max(currLoc, dest)); }
+    public void goDown() { ChangeFloor(Math.Min(currLoc, dest)); }
 
     private void ShowIndicator() { indicator.enabled = true; }
 
@@ -362,7 +350,7 @@ public class GridManager : MonoBehaviour
     {
         foreach(KeyValuePair<string,Vector2Int> keyValuePair in roomCoords) 
         {
-            entryPoints.SetTile(new Vector3Int(keyValuePair.Value.x, keyValuePair.Value.y, 0), roadTile);
+            entryPoints.SetTile(new Vector3Int(keyValuePair.Value.x, keyValuePair.Value.y, 0), roadTile[0]);
         }
     }
 }
