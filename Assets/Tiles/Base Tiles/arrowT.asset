@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: arrowT
   m_EditorClassIdentifier: 
   m_Sprite: {fileID: 3286163911610860551, guid: 9c4852b40ef664a4cb5f33713fd70a74, type: 3}
-  m_Color: {r: 1, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 0.02883111, b: 0, a: 1}
   m_Transform:
     e00: 1
     e01: 0

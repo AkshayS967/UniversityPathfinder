@@ -12,9 +12,14 @@ using UnityEngine.UI;
 
 public class GridManager : MonoBehaviour
 {
-    private string destination="";
-    private string currLocation="";
+    public Autocomplete autocomplete;
+
+    public string destination="";
+    public string currLocation="";
     private int dest = 0, currLoc = 0;
+
+    public bool destSelected;
+    public bool currSelected;
 
     public Tilemap[] tilemaps;
 
@@ -24,7 +29,7 @@ public class GridManager : MonoBehaviour
 
     public TileBase[] roadTile;
 
-    public SpriteRenderer[] floors;
+    public GameObject[] floors;
 
     public Vector3Int[][,] spots = new Vector3Int[4][,];
 
@@ -40,6 +45,17 @@ public class GridManager : MonoBehaviour
     BoundsInt bounds3;
 
     public Coordinates coordinates;
+    public Camera mainCamera;
+    public GameObject errorMessage;
+
+    private float transitionSpeed = 0.3f;
+    private float elapsedTime;
+    private Vector3 camTargetLocation;
+    private Vector3 camStartLocation;
+    private bool camTransitionActive = false;
+    private float camStartZoom;
+    private float camTargetZoom;
+    private float percentageComplete;
 
     // Start is called before the first frame update
     void Start()
@@ -60,7 +76,9 @@ public class GridManager : MonoBehaviour
         bounds1 = tilemaps[1].cellBounds;
         bounds2 = tilemaps[2].cellBounds;
         bounds3 = tilemaps[3].cellBounds;
+
         camera = Camera.main;
+        camTargetLocation = mainCamera.transform.position;
 
         spots[0] = new Vector3Int[bounds0.size.x, bounds0.size.y];
         spots[1] = new Vector3Int[bounds1.size.x, bounds1.size.y];
@@ -76,10 +94,11 @@ public class GridManager : MonoBehaviour
         astar[3] = new Astar(spots[3], bounds3.size.x, bounds3.size.y);
 
         ShowFloor();
-    }
+        destSelected = false;
+        currSelected = false;
+}
     public void CreateGrid(BoundsInt bounds, Tilemap tilemap, Vector3Int[,] spots)
     {
-
         for (int x = bounds.xMin, i = 0; i < (bounds.size.x); x++, i++)
         {
             for (int y = bounds.yMin, j = 0; j < (bounds.size.y); y++, j++)
@@ -108,37 +127,56 @@ public class GridManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Debug.Log("Hello");
-
         /*if (Input.GetMouseButtonDown(1))
         {
             Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
             Vector3Int gridPos = tilemap.WorldToCell(world);
             start = new Vector2Int(gridPos.x, gridPos.y);
         }*/
-        if (Input.GetMouseButtonDown(2))
+        /*if (Input.GetMouseButtonDown(2))
         {
             Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
             Vector3Int gridPos = tilemaps[1].WorldToCell(world);
             roadMaps[1].SetTile(new Vector3Int(gridPos.x, gridPos.y, 0), null);
-        }
+        }*/
 
-
-        if (Input.GetKeyDown("q"))
+        /*if (Input.GetKeyDown("q"))
         {
             Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
-            Vector3Int gridPos = tilemaps[1].WorldToCell(world);
+            Vector3Int gridPos = tilemaps[0].WorldToCell(world);
             Vector2Int pos = new Vector2Int(gridPos.x, gridPos.y);
             Debug.Log(pos);
 
-        }
-        if (Input.GetKeyDown("w"))
+        }*/
+        /*if (Input.GetKeyDown("w"))
         {
-            ShowPoints(coordinates.RoomCoord[2], pointMap);
+            ShowPoints(coordinates.RoomCoord, pointMap);
             Debug.Log(Physics2D.simulationMode);
-        }
+        }*/
 
+        /*if (Input.GetKeyDown("d"))
+        {
+            Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
+            Vector3Int gridPos = tilemaps[2].WorldToCell(world);
+            Debug.Log("{ \"\", new Vector2Int("+gridPos.x+","+gridPos.y+")},");
+        }*/
+        if (camTransitionActive)
+        {
+            /*Debug.Log(mainCamera.transform.position + "****" + targetLocation);
+            Debug.Log(mainCamera.transform.position == targetLocation);*/
+            elapsedTime += Time.deltaTime;
+            percentageComplete = elapsedTime / transitionSpeed;
+            mainCamera.transform.position = Vector3.Lerp(camStartLocation, camTargetLocation, Mathf.SmoothStep(0,1,percentageComplete));
+            mainCamera.orthographicSize = Mathf.Lerp(camStartZoom, camTargetZoom, Mathf.SmoothStep(0, 1, percentageComplete));
+            if (mainCamera.transform.position == camTargetLocation && mainCamera.orthographicSize == camTargetZoom)
+            {
+                camTransitionActive = false;
+            }
+            
+        }
+        
     }
+
 
     private void findPath(List<Spot> roadPath, Tilemap roadMap, Astar astar, Vector2Int currLoc, Vector2Int dest, Vector3Int[,] spots)
     {
@@ -152,15 +190,31 @@ public class GridManager : MonoBehaviour
         DrawRoad(roadPath, roadMap);
     }
 
-    public void GetDestination(string s){ destination = s; }
+    // When getting input, suggestions get shown 
+    public void GetDestination(string s)
+    {
+        destination = s.Replace("-","").ToUpper();
+        autocomplete.UpdateSuggestions(destination);
+        destSelected = true;
+        currSelected = false;
+    }
 
-    public void GetCurrLocation(string s){ currLocation = s; }
+    public void GetCurrLocation(string s)
+    { 
+        currLocation = s.Replace("-","").ToUpper();
+        autocomplete.UpdateSuggestions(currLocation);
+        currSelected = true;
+        destSelected = false;
+    }
+
+    /*public void DestDeselected() { destSelected = false; }
+    public void CurrDeselected() { currSelected = false; }*/
 
 
-    // Button Code
+    // UI Code
     private Color btnColor = Color.white;
     private Color btnColorActive = new Color(0.8f,0.8f,0.8f,1);
-    private int currFloor = 0;
+    public int currFloor = 0;
 
     public Button[] floorBtns;
     public SVGImage indicator;
@@ -174,28 +228,57 @@ public class GridManager : MonoBehaviour
 
     public void Search()
     {
+        autocomplete.HideSuggestions();
         roadMaps[0].ClearAllTiles();
         roadMaps[1].ClearAllTiles();
         roadMaps[2].ClearAllTiles();
         roadMaps[3].ClearAllTiles();
-        dest = destination[2] - '0';
-        currLoc = currLocation[2]-'0';
-        try 
+        try
         {
-            if (dest == currLoc)
+            dest = coordinates.RoomCoord[destination].Item1;
+            currLoc = coordinates.RoomCoord[currLocation].Item1;
+            Vector2Int currLocV = coordinates.RoomCoord[currLocation].Item2;
+            Vector2Int destV = coordinates.RoomCoord[destination].Item2;
+
+            if (destination == "WASHROOM (MEN)")
+            {
+                float minDist = 1000, currDist;
+                Vector2Int washRoomLocV = new Vector2Int();
+                foreach (Vector2Int washRoomLocation in coordinates.washRoomLocVM)
+                {
+                    currDist = Vector2.Distance(currLocV, washRoomLocation);
+                    if (currDist < minDist)
+                    {
+                        minDist = currDist;
+                        washRoomLocV = washRoomLocation;
+                    }
+                }
+                findPath(roadPath[currLoc], roadMaps[currLoc], astar[currLoc], washRoomLocV, currLocV, spots[currLoc]);
+            }
+            else if (destination == "WASHROOM (WOMEN)")
+            {
+                float minDist = 1000, currDist;
+                Vector2Int washRoomLocV = new Vector2Int();
+                foreach (Vector2Int washRoomLocation in coordinates.washRoomLocVF)
+                {
+                    currDist = Vector2.Distance(currLocV, washRoomLocation);
+                    if (currDist < minDist)
+                    {
+                        minDist = currDist;
+                        washRoomLocV = washRoomLocation;
+                    }
+                }
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], washRoomLocV, currLocV, spots[dest]);
+            }
+            else if (dest == currLoc)
             {
                 onSameFloor = true;
-                findPath(roadPath[dest], roadMaps[dest], astar[dest], coordinates.RoomCoord[dest][destination], coordinates.RoomCoord[dest][currLocation], spots[dest]);
-                MoveIndicator(dest);
+                findPath(roadPath[dest], roadMaps[dest], astar[dest], destV, currLocV, spots[dest]);
             }
             else
             {
-                Debug.Log("Diff floor");
                 onSameFloor = false;
-                MoveIndicator(currLoc);
 
-                Vector2Int currLocV = coordinates.RoomCoord[currLoc][currLocation];
-                Vector2Int destV = coordinates.RoomCoord[dest][destination];
                 Vector2Int stairLocV = new Vector2Int();
                 Vector2Int stairIconLocV = new Vector2Int();
                 float minDist = 1000, currDist;
@@ -210,20 +293,30 @@ public class GridManager : MonoBehaviour
                         stairIconLocV = stairs.IconLocV;
                     }
                 }
-                Debug.Log(stairLocV + "stairs");
 
                 findPath(roadPath[currLoc], roadMaps[currLoc], astar[currLoc], stairLocV, currLocV, spots[currLoc]);
                 findPath(roadPath[dest], roadMaps[dest], astar[dest], destV, stairLocV, spots[dest]);
                 MoveStairsBtn(stairIconLocV);
             }
+            MoveIndicator(currLoc);
+            elapsedTime = 0f;
+            camStartLocation = mainCamera.transform.position;
+            camTargetLocation = new Vector3(currLocV.x, currLocV.y, -1);
+            camTransitionActive = true;
+            camStartZoom = mainCamera.orthographicSize;
+            camTargetZoom = 40f;
+            //mainCamera.transform.position = new Vector3(currLocV.x, currLocV.y, -1);
+            //mainCamera.orthographicSize = 40;
+            ChangeFloor(currLoc);
         }
         catch (Exception e)
         {
-            Debug.LogException(e);
+            Debug.Log(e.ToString());
             searched = false;
             HideIndicator();
             HideGoUpBtn();
             HideGoDownBtn();
+            showErrorMessage();
             return;
         }
         searched = true;
@@ -231,25 +324,37 @@ public class GridManager : MonoBehaviour
         UpdateStairsBtn();
     }
 
+    private void showErrorMessage()
+    {
+        errorMessage.SetActive(true);
+        StartCoroutine(ShowMessage());
+    }
+
+    IEnumerator ShowMessage()
+    {
+        yield return new WaitForSeconds(1.5f);
+        errorMessage.SetActive(false);
+    }
+
     private void ShowGoUpBtn() 
     { 
         goUpBtn.enabled = true;
-        goUpBtn.GetComponent<SVGImage>().enabled = true;
+        goUpBtn.GetComponent<RawImage>().enabled = true;
     }
     private void ShowGoDownBtn() 
     { 
         goDownBtn.enabled = true; 
-        goDownBtn.GetComponent <SVGImage>().enabled = true;
+        goDownBtn.GetComponent <RawImage>().enabled = true;
     }
     private void HideGoUpBtn() 
     {
         goUpBtn.enabled = false;
-        goUpBtn.GetComponent<SVGImage>().enabled = false;
+        goUpBtn.GetComponent<RawImage>().enabled = false;
     }
     private void HideGoDownBtn() 
     { 
         goDownBtn.enabled = false;
-        goDownBtn.GetComponent<SVGImage>().enabled = false;
+        goDownBtn.GetComponent<RawImage>().enabled = false;
     }
 
     private void MoveStairsBtn(Vector2 stairsIconLocV)
@@ -335,22 +440,22 @@ public class GridManager : MonoBehaviour
     }
     private void HideFloor()
     {
-        roadMaps[currFloor].GetComponent<TilemapRenderer>().enabled = false;
-        floors[currFloor].enabled = false;
         floorBtns[currFloor].GetComponent<SVGImage>().color = btnColor;
+        roadMaps[currFloor].GetComponent<TilemapRenderer>().enabled = false;
+        floors[currFloor].SetActive(false);
     }
     private void ShowFloor()
     {
         floorBtns[currFloor].GetComponent<SVGImage>().color = btnColorActive;
         roadMaps[currFloor].GetComponent<TilemapRenderer>().enabled = true;
-        floors[currFloor].enabled = true;
+        floors[currFloor].SetActive(true);
     }
-
-    private void ShowPoints(Dictionary<string,Vector2Int> roomCoords, Tilemap entryPoints)
+    
+    private void ShowPoints(Dictionary<string,Tuple<int,Vector2Int>> roomCoords, Tilemap entryPoints)
     {
-        foreach(KeyValuePair<string,Vector2Int> keyValuePair in roomCoords) 
+        foreach(KeyValuePair<string, Tuple<int, Vector2Int>> keyValuePair in roomCoords) 
         {
-            entryPoints.SetTile(new Vector3Int(keyValuePair.Value.x, keyValuePair.Value.y, 0), roadTile[0]);
+            entryPoints.SetTile(new Vector3Int(keyValuePair.Value.Item2.x, keyValuePair.Value.Item2.y, 0), roadTile[0]);
         }
     }
 }
